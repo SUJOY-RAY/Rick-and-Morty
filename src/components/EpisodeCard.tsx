@@ -8,10 +8,19 @@ interface Props {
 const EpisodeCard: React.FC<Props> = ({ episode }) => {
   return (
     <div className="card">
-      <h3>{episode.name}</h3>
-      <p>Air Date: {episode.air_date}</p>
-      <p>Episode Code: {episode.episode}</p>
-      <p>Characters: {episode.characters.length}</p>
+      <h3 className="card-title">{episode.name}</h3>
+
+      <p>
+        <strong>Code:</strong> {episode.episode}
+      </p>
+
+      <p>
+        <strong>Air Date:</strong> {episode.air_date || "Unknown"}
+      </p>
+
+      <p>
+        <strong>Characters:</strong> {episode.characters?.length ?? 0}
+      </p>
     </div>
   );
 };

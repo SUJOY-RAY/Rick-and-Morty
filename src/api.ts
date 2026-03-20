@@ -2,14 +2,27 @@ import axios from "axios";
 import type { Character, CharacterResponse, Episode, EpisodeResponse, LocationResponse } from "./types";
 
 const API_URL = "https://rickandmortyapi.com/api";
+
+
 export const fetchCharacters = async (
   page = 1,
   filters?: Partial<{ name: string; status: string; species: string; type: string; gender: string }>
 ): Promise<CharacterResponse> => {
   const params = { page, ...filters };
+
+  const searchParams = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value) searchParams.set(key, String(value));
+  });
+  
+  const newUrl = `${window.location.pathname}?${searchParams.toString()}`;
+  window.history.pushState({}, "", newUrl); 
+  
   const res = await axios.get<CharacterResponse>(`${API_URL}/character`, { params });
+  
   return res.data;
 };
+
 
 export const fetchCharacterById = async (id: number | number[]): Promise<Character | Character[]> => {
   const res = await axios.get<Character | Character[]>(`${API_URL}/character/${id}`);

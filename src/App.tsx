@@ -1,69 +1,116 @@
-import React, { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
+import CharacterCard from "./components/CharactedCard"; 
 import LocationCard from "./components/LocationCard";
 import EpisodeCard from "./components/EpisodeCard";
+
 import "./App.css";
-import type { Character, Episode } from "./types";
 import { fetchCharacters, fetchEpisodes, fetchLocations } from "./api";
-import CharacterCard from "./components/CharactedCard";
 
 type Tab = "characters" | "locations" | "episodes";
 
-const App: React.FC = () => {
+const App = () => {
   const [tab, setTab] = useState<Tab>("characters");
-  const [characters, setCharacters] = useState<Character[]>([]);
-  const [locations, setLocations] = useState<Location[]>([]);
-  const [episodes, setEpisodes] = useState<Episode[]>([]);
-  const [page, setPage] = useState<number>(1);
-  const [infoPages, setInfoPages] = useState<number>(1);
+  const [page, setPage] = useState(1);
 
-  const loadData = async () => {
-    try {
-      if (tab === "characters") {
-        const data = await fetchCharacters(page);
-        setCharacters(data.results);
-        setInfoPages(data.info.pages);
-      } else if (tab === "locations") {
-        const data = await fetchLocations(page);
-        setLocations(data.results);
-        setInfoPages(data.info.pages);
-      } else if (tab === "episodes") {
-        const data = await fetchEpisodes(page);
-        setEpisodes(data.results);
-        setInfoPages(data.info.pages);
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
+  const characterQuery = useQuery({
+    queryKey: ["characters", page],
+    queryFn: () => fetchCharacters(page),
+    enabled: tab === "characters",
+    staleTime: 1000 * 60 * 2
+  });
 
-  useEffect(() => {
-    loadData();
-  }, [tab, page]);
+  const locationQuery = useQuery({
+    queryKey: ["locations", page],
+    queryFn: () => fetchLocations(page),
+    enabled: tab === "locations",
+    staleTime: 1000 * 60 * 2
+  });
+
+  const episodeQuery = useQuery({
+    queryKey: ["episodes", page],
+    queryFn: () => fetchEpisodes(page),
+    enabled: tab === "episodes",
+    staleTime: 1000 * 60 * 2
+  });
+
+  const currentQuery =
+    tab === "characters"
+      ? characterQuery
+      : tab === "locations"
+      ? locationQuery
+      : episodeQuery;
+
+  const totalPages = currentQuery.data?.info.pages ?? 1;
 
   return (
     <div className="container">
       <h1>Rick and Morty API</h1>
+
+      {/* Tabs */}
       <div className="tabs">
-        <button onClick={() => setTab("characters")}>Characters</button>
-        <button onClick={() => setTab("locations")}>Locations</button>
-        <button onClick={() => setTab("episodes")}>Episodes</button>
+        <button onClick={() => { setTab("characters"); setPage(1); }}>
+          Characters
+        </button>
+        <button onClick={() => { setTab("locations"); setPage(1); }}>
+          Locations
+        </button>
+        <button onClick={() => { setTab("episodes"); setPage(1); }}>
+          Episodes
+        </button>
       </div>
 
-      <div className="grid">
-        {tab === "characters" && characters.map((c) => <CharacterCard key={c.id} character={c} />)}
-        {tab === "locations" && locations.map((l) => <LocationCard key={l.id} location={l} />)}
-        {tab === "episodes" && episodes.map((e) => <EpisodeCard key={e.id} episode={e} />)}
-      </div>
+      {/* Loading */}
+      {currentQuery.isLoading && <p>Loading...</p>}
 
+      {/* Error */}
+      {currentQuery.isError && <p>Something went wrong</p>}
+
+      {/* Data */}
+      {!currentQuery.isLoading && !currentQuery.isError && (
+        <div className="grid">
+          {tab === "characters" &&
+            characterQuery.data?.results.map((c) => (
+              <CharacterCard key={c.id} character={c} />
+            ))}
+
+          {tab === "locations" &&
+            locationQuery.data?.results.map((l) => (
+              <LocationCard key={l.id} location={l} />
+            ))}
+
+          {tab === "episodes" &&
+            episodeQuery.data?.results.map((e) => (
+              <EpisodeCard key={e.id} episode={e} />
+            ))}
+
+          {/* Empty state */}
+          {currentQuery.data?.results.length === 0 && (
+            <p>No results found</p>
+          )}
+        </div>
+      )}
+
+      {/* Pagination */}
       <div className="pagination">
-        <button onClick={() => setPage((p) => Math.max(p - 1, 1))} disabled={page === 1}>
+        <button
+          onClick={() => setPage((p) => Math.max(p - 1, 1))}
+          disabled={page === 1}
+        >
           Previous
         </button>
+
         <span>
-          Page {page} of {infoPages}
+          Page {page} of {totalPages}
         </span>
-        <button onClick={() => setPage((p) => (p < infoPages ? p + 1 : p))} disabled={page === infoPages}>
+
+        <button
+          onClick={() =>
+            setPage((p) => (p < totalPages ? p + 1 : p))
+          }
+          disabled={page === totalPages}
+        >
           Next
         </button>
       </div>
